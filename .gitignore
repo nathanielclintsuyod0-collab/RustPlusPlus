@@ -13,3 +13,4 @@ src-tauri/gen/
 
 # Local backups
 .backup/
+/src-tauri/binaries/
