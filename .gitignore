@@ -1,0 +1,15 @@
+/target
+.env
+*.db
+*.db-shm
+*.db-wal
+
+# Tauri / frontend
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+*.log
+
+# Local backups
+.backup/

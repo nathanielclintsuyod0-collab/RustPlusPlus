@@ -1,0 +1,46 @@
+name: Build Rust++ for Windows
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Windows Installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Windows installers
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
+          releaseName: Rust++ ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
+          releaseBody: |
+            Rust++ Windows release.
+
+            Offline coding assistant supporting C++, Rust, Python, JavaScript, Java, and C#.
+          releaseDraft: true
+          prerelease: false
+          args: --bundles nsis,msi
