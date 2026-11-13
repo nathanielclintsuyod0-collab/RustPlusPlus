@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use tauri::Manager;
+
 #[tauri::command]
 fn app_info() -> serde_json::Value {
     serde_json::json!({
@@ -61,7 +63,11 @@ fn read_source_file(path: String) -> Result<String, String> {
 
 
 #[tauri::command]
-fn run_source(language: String, source: String) -> Result<serde_json::Value, String> {
+fn run_source(
+    app: tauri::AppHandle,
+    language: String,
+    source: String,
+) -> Result<serde_json::Value, String> {
     use std::{
         fs,
         path::PathBuf,
@@ -72,6 +78,8 @@ fn run_source(language: String, source: String) -> Result<serde_json::Value, Str
     };
 
     static NEXT_ID: AtomicU64 = AtomicU64::new(1);
+
+    let resource_dir = app.path().resource_dir().map_err(|e| e.to_string())?;
 
     if source.trim().is_empty() {
         return Err("There is no source code to run.".into());
@@ -87,14 +95,14 @@ fn run_source(language: String, source: String) -> Result<serde_json::Value, Str
 
     let result = (|| -> Result<serde_json::Value, String> {
         let (_file, compiler, run_program, run_args):
-            (&str, Option<(&str, Vec<String>)>, String, Vec<String>) =
+            (&str, Option<(String, Vec<String>)>, String, Vec<String>) =
         match language.as_str() {
             "cpp" => {
                 let file = dir.join("main.cpp");
                 fs::write(&file, &source).map_err(|e| e.to_string())?;
                 let binary = dir.join(if cfg!(windows) { "program.exe" } else { "program" });
                 ("main.cpp",
-                 Some(("g++", vec![
+                 Some((if cfg!(windows) { resource_dir.join("binaries/cpp/mingw64/bin/g++.exe").to_string_lossy().into_owned() } else { "g++".to_string() }, vec![
                     file.to_string_lossy().into_owned(),
                     "-std=c++17".into(), "-O0".into(),
                     "-o".into(), binary.to_string_lossy().into_owned()
@@ -107,7 +115,7 @@ fn run_source(language: String, source: String) -> Result<serde_json::Value, Str
                 fs::write(&file, &source).map_err(|e| e.to_string())?;
                 let binary = dir.join(if cfg!(windows) { "program.exe" } else { "program" });
                 ("main.rs",
-                 Some(("rustc", vec![
+                 Some(("rustc".into(), vec![
                     file.to_string_lossy().into_owned(),
                     "-o".into(), binary.to_string_lossy().into_owned()
                  ])),
@@ -126,7 +134,7 @@ fn run_source(language: String, source: String) -> Result<serde_json::Value, Str
             "java" => {
                 fs::write(dir.join("Main.java"), &source).map_err(|e| e.to_string())?;
                 ("Main.java",
-                 Some(("javac", vec!["Main.java".into()])),
+                 Some(("javac".into(), vec!["Main.java".into()])),
                  "java".into(), vec!["Main".into()])
             }
             "csharp" => {
@@ -154,7 +162,19 @@ fn run_source(language: String, source: String) -> Result<serde_json::Value, Str
             let stdout = fs::File::create(&stdout_path).map_err(|e| e.to_string())?;
             let stderr = fs::File::create(&stderr_path).map_err(|e| e.to_string())?;
 
-            let mut child = Command::new(program)
+            let mut command = Command::new(program);
+
+            if cfg!(windows) {
+                let mut paths = vec![resource_dir.join("binaries/cpp/mingw64/bin")];
+                if let Some(existing) = std::env::var_os("PATH") {
+                    paths.extend(std::env::split_paths(&existing));
+                }
+                if let Ok(path) = std::env::join_paths(paths) {
+                    command.env("PATH", path);
+                }
+            }
+
+            let mut child = command
                 .args(arguments)
                 .current_dir(&dir)
                 .stdin(Stdio::null())
@@ -185,7 +205,7 @@ fn run_source(language: String, source: String) -> Result<serde_json::Value, Str
         };
 
         if let Some((program, arguments)) = compiler {
-            let (code, out, err) = execute(program, &arguments)?;
+            let (code, out, err) = execute(&program, &arguments)?;
             if code != 0 {
                 let explanation: Vec<String> = [err, out]
                     .into_iter()
