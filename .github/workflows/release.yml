@@ -21,11 +21,13 @@ jobs:
       - name: Download bundled GCC toolchain
         shell: pwsh
         run: |
-          $url = "https://sourceforge.net/projects/winlibs-mingw/files/16.2.0posix-14.0.0-ucrt-r2/winlibs-x86_64-posix-seh-gcc-16.2.0-mingw-w64ucrt-14.0.0-r2.zip/download"
+          $ErrorActionPreference = "Stop"
           New-Item -ItemType Directory -Force -Path "src-tauri/binaries/cpp" | Out-Null
-          Invoke-WebRequest -Uri $url -OutFile "gcc.zip"
+          curl.exe -L --fail --retry 3 --output gcc.zip "https://sourceforge.net/projects/winlibs-mingw/files/16.2.0posix-14.0.0-ucrt-r2/winlibs-x86_64-posix-seh-gcc-16.2.0-mingw-w64ucrt-14.0.0-r2.zip/download"
+          if ($LASTEXITCODE -ne 0) { throw "GCC download failed" }
           Expand-Archive -Path "gcc.zip" -DestinationPath "src-tauri/binaries/cpp" -Force
           Remove-Item "gcc.zip"
+          if (!(Test-Path "src-tauri/binaries/cpp/mingw64/bin/g++.exe")) { throw "g++.exe was not found after extraction" }
 
       - name: Install Node
         uses: actions/setup-node@v4
