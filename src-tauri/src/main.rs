@@ -124,12 +124,26 @@ fn run_source(
                 fs::write(&file, &source).map_err(|e| e.to_string())?;
                 let binary = dir.join(if cfg!(windows) { "program.exe" } else { "program" });
                 ("main.cpp",
-                 Some((if cfg!(windows) { resource_dir.join("binaries/cpp/mingw64/bin/g++.exe").to_string_lossy().into_owned() } else { "g++".to_string() }, vec![
-                    "-B".into(),
-                    resource_dir.join("binaries/cpp/mingw64/libexec/gcc/x86_64-w64-mingw32/16.2.0/").to_string_lossy().into_owned(),
-                    file.to_string_lossy().into_owned(),
-                    "-std=c++17".into(), "-O0".into(),
-                    "-o".into(), binary.to_string_lossy().into_owned()
+                 Some((if cfg!(windows) {
+                     resource_dir.join("binaries/cpp/mingw64/bin/g++.exe").to_string_lossy().into_owned()
+                 } else {
+                     "g++".to_string()
+                 }, vec![
+                     "-isystem".into(),
+                     resource_dir.join("binaries/cpp/mingw64/include/c++/16.2.0").to_string_lossy().into_owned(),
+                     "-isystem".into(),
+                     resource_dir.join("binaries/cpp/mingw64/include/c++/16.2.0/x86_64-w64-mingw32").to_string_lossy().into_owned(),
+                     "-isystem".into(),
+                     resource_dir.join("binaries/cpp/mingw64/lib/gcc/x86_64-w64-mingw32/16.2.0/include").to_string_lossy().into_owned(),
+                     "-isystem".into(),
+                     resource_dir.join("binaries/cpp/mingw64/lib/gcc/x86_64-w64-mingw32/16.2.0/include-fixed").to_string_lossy().into_owned(),
+                     "-isystem".into(),
+                     resource_dir.join("binaries/cpp/mingw64/include").to_string_lossy().into_owned(),
+                     "-isystem".into(),
+                     resource_dir.join("binaries/cpp/mingw64/x86_64-w64-mingw32/include").to_string_lossy().into_owned(),
+                     file.to_string_lossy().into_owned(),
+                     "-std=c++17".into(), "-O0".into(),
+                     "-o".into(), binary.to_string_lossy().into_owned()
                  ])),
                  binary.to_string_lossy().into_owned(),
                  vec![])
@@ -203,13 +217,7 @@ fn run_source(
                 }
             }
 
-            if cfg!(windows) && program.to_ascii_lowercase().ends_with("g++.exe") {
-                let prefix = resource_dir.join(
-                    "binaries/cpp/mingw64/libexec/gcc/x86_64-w64-mingw32/16.2.0"
-                );
-                let prefix = format!("{}{}", prefix.display(), std::path::MAIN_SEPARATOR);
-                command.env("GCC_EXEC_PREFIX", prefix);
-            }
+
 
             let mut child = command
                 .args(arguments)
