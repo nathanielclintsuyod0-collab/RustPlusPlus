@@ -103,6 +103,8 @@ fn run_source(
                 let binary = dir.join(if cfg!(windows) { "program.exe" } else { "program" });
                 ("main.cpp",
                  Some((if cfg!(windows) { resource_dir.join("binaries/cpp/mingw64/bin/g++.exe").to_string_lossy().into_owned() } else { "g++".to_string() }, vec![
+                    "-B".into(),
+                    resource_dir.join("binaries/cpp/mingw64/libexec/gcc/x86_64-w64-mingw32/16.2.0/").to_string_lossy().into_owned(),
                     file.to_string_lossy().into_owned(),
                     "-std=c++17".into(), "-O0".into(),
                     "-o".into(), binary.to_string_lossy().into_owned()
