@@ -129,6 +129,7 @@ fn run_source(
                  } else {
                      "g++".to_string()
                  }, vec![
+                     "-v".into(),
                      "-isystem".into(),
                      resource_dir.join("binaries/cpp/mingw64/include/c++/16.2.0").to_string_lossy().into_owned(),
                      "-isystem".into(),
