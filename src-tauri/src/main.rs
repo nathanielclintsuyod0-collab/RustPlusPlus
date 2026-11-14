@@ -98,6 +98,28 @@ fn run_source(
             (&str, Option<(String, Vec<String>)>, String, Vec<String>) =
         match language.as_str() {
             "cpp" => {
+                let gcc_bin = resource_dir.join("binaries/cpp/mingw64/bin");
+                let cc1plus_dir = resource_dir.join(
+                    "binaries/cpp/mingw64/libexec/gcc/x86_64-w64-mingw32/16.2.0"
+                );
+
+                if cfg!(windows) {
+                    let gcc = gcc_bin.join("g++.exe");
+                    let cc1plus = cc1plus_dir.join("cc1plus.exe");
+
+                    if !gcc.is_file() {
+                        return Err(format!("Bundled g++.exe missing: {}", gcc.display()));
+                    }
+
+                    if !cc1plus.is_file() {
+                        return Err(format!(
+                            "Bundled cc1plus.exe missing: {} | Resource directory: {}",
+                            cc1plus.display(),
+                            resource_dir.display()
+                        ));
+                    }
+                }
+
                 let file = dir.join("main.cpp");
                 fs::write(&file, &source).map_err(|e| e.to_string())?;
                 let binary = dir.join(if cfg!(windows) { "program.exe" } else { "program" });
