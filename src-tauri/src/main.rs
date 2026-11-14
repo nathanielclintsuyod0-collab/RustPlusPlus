@@ -189,13 +189,26 @@ fn run_source(
             let mut command = Command::new(program);
 
             if cfg!(windows) {
-                let mut paths = vec![resource_dir.join("binaries/cpp/mingw64/bin")];
+                let mut paths = vec![
+                    resource_dir.join("binaries/cpp/mingw64/bin"),
+                    resource_dir.join(
+                        "binaries/cpp/mingw64/libexec/gcc/x86_64-w64-mingw32/16.2.0"
+                    ),
+                ];
                 if let Some(existing) = std::env::var_os("PATH") {
                     paths.extend(std::env::split_paths(&existing));
                 }
                 if let Ok(path) = std::env::join_paths(paths) {
                     command.env("PATH", path);
                 }
+            }
+
+            if cfg!(windows) && program.to_ascii_lowercase().ends_with("g++.exe") {
+                let prefix = resource_dir.join(
+                    "binaries/cpp/mingw64/libexec/gcc/x86_64-w64-mingw32/16.2.0"
+                );
+                let prefix = format!("{}{}", prefix.display(), std::path::MAIN_SEPARATOR);
+                command.env("GCC_EXEC_PREFIX", prefix);
             }
 
             let mut child = command
